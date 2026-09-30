@@ -1,0 +1,55 @@
+[project]
+name = "cybertrace-backend"
+version = "1.0.0"
+description = "CYBERTRACE - AI-assisted cybercrime evidence management and digital forensic investigation platform"
+requires-python = ">=3.13"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["."]
+exclude = [".venv", "app/db/migrations/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "B",        # bugbear
+    "C4",       # comprehensions
+    "UP",       # pyupgrade
+    "N",        # pep8-naming
+    "S",        # bandit (security)
+    "T20",      # no print statements
+    "RUF",
+]
+ignore = [
+    "S101",     # assert is fine in tests and internal invariants
+    "B008",     # FastAPI Depends() in defaults is the documented idiom
+    "N818",     # the error taxonomy reads as conditions (NotFound, Conflict); base is CybertraceError
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106", "S311"]
+"app/seed/*" = ["S311", "S105"]  # demo password and non-crypto randomness
+"app/core/config.py" = ["S105"]  # default-secret sentinels are compared, not used
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["pydantic.mypy"]
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+check_untyped_defs = true
+exclude = ["\\.venv", "app/db/migrations"]
+
+[[tool.mypy.overrides]]
+module = ["magic.*", "exifread.*", "weasyprint.*", "networkx.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning:app.*"]
+markers = ["integration: requires a live database"]

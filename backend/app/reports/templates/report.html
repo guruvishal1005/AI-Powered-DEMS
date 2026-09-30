@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>{{ classification }} — {{ title }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 22mm 18mm 24mm 18mm;
+      @top-center {
+        content: "{{ classification }}  ·  {{ snapshot.case.reference }}";
+        font-size: 9pt;
+        color: #4b5563;
+        font-family: "Liberation Sans", Helvetica, Arial, sans-serif;
+      }
+      @bottom-center {
+        content: "CYBERTRACE forensic report  ·  page " counter(page) " of " counter(pages);
+        font-size: 8pt;
+        color: #6b7280;
+        font-family: "Liberation Sans", Helvetica, Arial, sans-serif;
+      }
+    }
+    body {
+      font-family: "Liberation Sans", Helvetica, Arial, sans-serif;
+      font-size: 10.5pt;
+      color: #111827;
+      line-height: 1.45;
+    }
+    h1 { font-size: 22pt; margin: 0 0 6pt; }
+    h2 { font-size: 14pt; border-bottom: 1px solid #d1d5db; padding-bottom: 4pt; margin-top: 22pt; }
+    h3 { font-size: 11.5pt; margin-top: 14pt; }
+    .banner {
+      background: #111827;
+      color: #f9fafb;
+      text-align: center;
+      letter-spacing: 0.18em;
+      font-weight: 700;
+      padding: 8pt 0;
+      margin-bottom: 18pt;
+    }
+    .meta { color: #4b5563; font-size: 9.5pt; }
+    table { width: 100%; border-collapse: collapse; margin: 8pt 0 14pt; font-size: 9pt; }
+    th, td { border: 1px solid #e5e7eb; padding: 5pt 6pt; text-align: left; vertical-align: top; }
+    th { background: #f3f4f6; font-weight: 600; }
+    code, .mono { font-family: "Liberation Mono", "Courier New", monospace; font-size: 8.5pt; word-break: break-all; }
+    .observed { background: #ecfeff; padding: 8pt 10pt; margin: 6pt 0; }
+    .interpretation { background: #fff7ed; padding: 8pt 10pt; margin: 6pt 0; }
+    .fail { color: #b91c1c; font-weight: 600; }
+    .ok { color: #047857; font-weight: 600; }
+    .cover-block { margin: 18pt 0; }
+    .toc li { margin: 3pt 0; }
+  </style>
+</head>
+<body>
+  <div class="banner">{{ classification }}</div>
+  <h1>{{ title }}</h1>
+  <p class="meta">
+    Case {{ snapshot.case.reference }} · {{ snapshot.case.incident_type }} ·
+    severity {{ snapshot.case.severity }} · captured {{ snapshot.captured_at }}
+    by {{ snapshot.captured_by }}
+  </p>
+
+  <div class="cover-block">
+    <h2>1. Cover</h2>
+    <table>
+      <tr><th>Case</th><td>{{ snapshot.case.reference }} — {{ snapshot.case.title }}</td></tr>
+      <tr><th>Organisation</th><td>{{ snapshot.case.organization or "—" }}</td></tr>
+      <tr><th>Jurisdiction</th><td>{{ snapshot.case.jurisdiction or "—" }}</td></tr>
+      <tr><th>Lead</th><td>{{ snapshot.case.lead or "—" }}</td></tr>
+      <tr><th>Status at capture</th><td>{{ snapshot.case.status }}</td></tr>
+      <tr><th>Evidence items</th><td>{{ snapshot.counts.evidence }}</td></tr>
+      <tr><th>Integrity</th>
+        <td>
+          {{ snapshot.integrity.verified_count }} verified,
+          {{ snapshot.integrity.failed_count }} failed,
+          {{ snapshot.integrity.pending_count }} pending.
+          Custody chains
+          {% if snapshot.integrity.all_custody_chains_intact %}
+            <span class="ok">intact</span>
+          {% else %}
+            <span class="fail">not fully intact</span>
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <h2>2. Contents</h2>
+  <ol class="toc">
+    <li>Cover</li>
+    <li>Contents</li>
+    <li>Executive summary</li>
+    <li>Evidence inventory and hashes</li>
+    <li>Integrity and chain of custody</li>
+    <li>Timeline</li>
+    <li>Findings</li>
+    <li>Correlations and insights</li>
+    <li>Conclusion</li>
+  </ol>
+
+  {% if snapshot.spec.include_executive_summary | default(true) %}
+  <h2>3. Executive summary</h2>
+  <p>{{ snapshot.case.summary or "No narrative summary was recorded on the case at capture time." }}</p>
+  {% endif %}
+
+  {% if snapshot.spec.include_evidence_inventory | default(true) %}
+  <h2>4. Evidence inventory</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Ref</th><th>Title</th><th>SHA-256</th><th>Size</th><th>Integrity</th><th>Custody</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in snapshot.evidence_inventory %}
+      <tr>
+        <td class="mono">{{ item.reference }}</td>
+        <td>{{ item.title }}<br/><span class="meta">{{ item.original_filename }}</span></td>
+        <td class="mono">{{ item.sha256 }}</td>
+        <td>{{ item.size_bytes }}</td>
+        <td>{{ item.integrity_status }}</td>
+        <td>{% if item.custody.trustworthy %}<span class="ok">intact</span>{% else %}<span class="fail">break</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if snapshot.spec.include_integrity | default(true) %}
+  <h2>5. Integrity and chain-of-custody statement</h2>
+  <p>
+    Each artifact is identified by the SHA-256 of its plaintext. Storage uses AES-256-GCM
+    envelope encryption; a GCM authentication failure and a plaintext hash mismatch are
+    recorded as distinct outcomes. Custody events are hash-chained:
+    <span class="mono">entry_hash = SHA-256(canonical_json(event) || prev_hash)</span>.
+  </p>
+  <p>
+    At capture, {{ snapshot.integrity.verified_count }} of {{ snapshot.counts.evidence }}
+    items verified against their acquisition fingerprint.
+    {% if snapshot.integrity.all_custody_chains_intact %}
+      Every custody chain replayed intact.
+    {% else %}
+      One or more custody chains did not verify; those items must not be relied upon in
+      this report without an explanatory note.
+    {% endif %}
+  </p>
+  {% endif %}
+
+  {% if snapshot.spec.include_timeline | default(true) %}
+  <h2>6. Timeline (extracted observations)</h2>
+  <table>
+    <thead><tr><th>Occurred</th><th>Kind</th><th>Summary</th><th>Confidence</th></tr></thead>
+    <tbody>
+      {% for event in snapshot.timeline[:80] %}
+      <tr>
+        <td class="mono">{{ event.occurred_at }}</td>
+        <td>{{ event.kind }}</td>
+        <td>{{ event.summary }}</td>
+        <td>{{ event.time_confidence }}{% if event.timezone_assumed %} (TZ assumed){% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if snapshot.timeline | length > 80 %}
+  <p class="meta">Showing the first 80 of {{ snapshot.timeline | length }} observations. The full set is in the JSON snapshot.</p>
+  {% endif %}
+  {% endif %}
+
+  {% if snapshot.spec.include_findings | default(true) %}
+  <h2>7. Findings</h2>
+  {% for finding in snapshot.findings %}
+    <h3>F-{{ finding.sequence }} · {{ finding.title }}</h3>
+    <p class="meta">{{ finding.kind }} · {{ finding.severity }} · confidence {{ finding.confidence }} · {{ finding.author or "unattributed" }}</p>
+    <p>{{ finding.description }}</p>
+    {% if finding.evidence_references %}
+    <p class="meta">Cited evidence: {{ finding.evidence_references | join(", ") }}</p>
+    {% endif %}
+  {% endfor %}
+  {% if not snapshot.findings %}
+  <p>No investigator findings were marked for inclusion at capture time.</p>
+  {% endif %}
+  {% endif %}
+
+  {% if snapshot.spec.include_insights | default(true) %}
+  <h2>8. Insights</h2>
+  <p class="meta">Each insight separates observed fact from interpretation. LLM phrasing, if present, is excluded from this snapshot's attested facts.</p>
+  {% for insight in snapshot.insights %}
+    <h3>{{ insight.title }}</h3>
+    <p class="meta">{{ insight.kind }} · {{ insight.provenance }} · {{ insight.severity }}</p>
+    <div class="observed"><strong>Observed.</strong> {{ insight.observed }}</div>
+    {% if insight.interpretation %}
+    <div class="interpretation"><strong>Interpretation.</strong> {{ insight.interpretation }}</div>
+    {% endif %}
+  {% endfor %}
+  {% endif %}
+
+  <h2>9. Prepared by / reviewed by</h2>
+  <table>
+    <tr><th>Prepared by</th><td>{{ snapshot.captured_by }}</td><th>Captured at</th><td>{{ snapshot.captured_at }}</td></tr>
+    <tr><th>Reviewed by</th><td>________________________</td><th>Date</th><td>____________</td></tr>
+  </table>
+  <p class="meta">This document is generated from a persisted JSON snapshot. Re-rendering it does not query the live case.</p>
+</body>
+</html>

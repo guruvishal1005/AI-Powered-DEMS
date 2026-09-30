@@ -1,0 +1,40 @@
+# CYBERTRACE backend - pinned runtime dependencies (verified against PyPI, Python 3.14)
+
+# --- Web framework ---
+fastapi==0.141.1
+uvicorn[standard]==0.52.3
+python-multipart==0.0.32          # streamed multipart evidence uploads
+itsdangerous==2.2.0               # signed short-lived evidence download URLs
+
+# --- Validation / settings ---
+pydantic==2.13.4
+pydantic-settings==2.15.0
+email-validator==2.3.0
+
+# --- Persistence ---
+SQLAlchemy==2.0.52
+alembic==1.19.1
+psycopg[binary]==3.3.4
+
+# --- Security / cryptography ---
+cryptography==50.0.0              # AES-256-GCM envelope encryption, Ed25519 signing
+argon2-cffi==25.1.0               # Argon2id password hashing
+PyJWT==2.13.0                     # short-lived access tokens
+
+# --- Forensic extraction ---
+python-magic==0.4.27              # content-based MIME detection via libmagic
+Pillow==12.3.0                    # image decoding + EXIF
+ExifRead==3.5.1                   # richer EXIF/GPS tags
+pypdf==6.16.1                     # PDF document properties
+python-dateutil==2.9.0.post0      # tolerant timestamp parsing across log formats
+
+# --- Analysis ---
+networkx==3.6.1                   # graph centrality / community detection
+
+# --- Reporting ---
+Jinja2==3.1.6
+weasyprint==69.0                  # HTML -> PDF (pango/cairo verified present)
+
+# --- Observability ---
+structlog==26.1.0
+orjson==3.12.0
